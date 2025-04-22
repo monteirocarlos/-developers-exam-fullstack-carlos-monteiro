@@ -4,8 +4,11 @@ const USE_MOCK = true;
 const API_URL = '/api';
 
 const apiReal = {
-  async getBooks(page, pageSize) {
-    const response = await fetch(`${API_URL}/books?page=${page}&pageSize=${pageSize}&sort=-createdAt`);
+  async getBooks(page, pageSize, search = '') {
+    const url = `${API_URL}/books?page=${page}&pageSize=${pageSize}&sort=-createdAt${
+      search ? `&search=${encodeURIComponent(search)}` : ''
+    }`;
+    const response = await fetch(url);
     return handleResponse(response);
   },
 

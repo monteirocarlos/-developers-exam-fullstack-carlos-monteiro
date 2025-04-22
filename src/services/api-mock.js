@@ -32,10 +32,21 @@ const saveBooks = () => {
 const simulateNetworkDelay = () => new Promise(resolve => setTimeout(resolve, 300));
 
 export const bookServiceMock = {
-  async getBooks(page = 1, pageSize = 10) {
+  async getBooks(page = 1, pageSize = 10, search = '') {
     await simulateNetworkDelay();
     
-    const sortedItems = [...mockBooksDatabase.value.items].sort((a, b) => 
+    let filteredItems = [...mockBooksDatabase.value.items];
+    
+    if (search) {
+      const query = search.toLowerCase();
+      filteredItems = filteredItems.filter(book => 
+        book.title.toLowerCase().includes(query) ||
+        book.author.toLowerCase().includes(query) ||
+        book.description.toLowerCase().includes(query)
+      );
+    }
+    
+    const sortedItems = filteredItems.sort((a, b) => 
       new Date(b.createdAt) - new Date(a.createdAt));
     
     const start = (page - 1) * pageSize;
@@ -44,7 +55,7 @@ export const bookServiceMock = {
     
     return {
       items: paginatedItems,
-      totalCount: mockBooksDatabase.value.totalCount,
+      totalCount: filteredItems.length,
       page,
       pageSize
     };

@@ -68,7 +68,8 @@ export default {
   justify-content: center;
   align-items: center;
   gap: 1.5rem;
-  margin-top: 3rem;
+  margin-top: 2rem;
+  padding: 1rem 0;
 }
 
 .page-btn {
@@ -79,20 +80,36 @@ export default {
   border-radius: 4px;
   cursor: pointer;
   min-width: 100px;
-  transition: background-color 0.2s;
+  transition: all 0.3s ease;
 }
 
 .page-btn:hover:not(:disabled) {
   background-color: #094b7a;
+  transform: translateY(-1px);
 }
 
 .page-btn:disabled {
   background-color: #cccccc;
   cursor: not-allowed;
+  transform: none;
 }
 
 .page-info {
   font-weight: bold;
   color: #333;
+  min-width: 120px;
+  text-align: center;
+}
+
+@media (max-width: 480px) {
+  .pagination {
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  
+  .page-btn {
+    padding: 0.5rem 1rem;
+    min-width: 80px;
+  }
 }
 </style>

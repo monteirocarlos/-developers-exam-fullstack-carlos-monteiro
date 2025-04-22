@@ -1,11 +1,20 @@
 <template>
   <div class="book-list">
-
     <div class="header-actions">
       <h1>Lista de Livros</h1>
-      <button @click="openCreateForm" class="btn-add">
-        Adicionar Livro
-      </button>
+      <div class="search-add-container">
+        <div class="search-box">
+          <input
+            v-model="searchQuery"
+            @input="handleSearch"
+            placeholder="Buscar por título, autor ou descrição..."
+            type="text"
+          />
+        </div>
+        <button @click="openCreateForm" class="btn-add">
+          Adicionar Livro
+        </button>
+      </div>
     </div>
 
     <div v-if="statusMessage" :class="['status-message', statusType]">
@@ -17,6 +26,10 @@
     </div>
 
     <template v-else>
+      <div v-if="searchQuery && books.length === 0" class="no-results">
+        Nenhum livro encontrado para "{{ searchQuery }}"
+      </div>
+
       <div class="books-container">
         <BookCard 
           v-for="book in books" 
@@ -27,11 +40,12 @@
         />
       </div>
 
-      <div v-if="books.length === 0" class="no-books">
+      <div v-if="books.length === 0 && !searchQuery" class="no-books">
         Nenhum livro encontrado.
       </div>
 
       <Pagination
+        v-if="!searchQuery || books.length > 0"
         :current-page="currentPage"
         :total-items="totalItems"
         :items-per-page="pageSize"
@@ -59,7 +73,7 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { bookService } from '@/services/api';
 import BookCard from '@/components/books/BookCard.vue';
 import Pagination from '@/components/common/Pagination.vue';
@@ -76,8 +90,9 @@ export default {
   emits: ['book-created'],
   setup(props, { emit }) {
     const books = ref([]);
+    const originalBooks = ref([]);
     const currentPage = ref(1);
-    const pageSize = ref(6);
+    const pageSize = ref(5);
     const totalItems = ref(0);
     const loading = ref(false);
     const statusMessage = ref('');
@@ -87,19 +102,39 @@ export default {
     const selectedBook = ref(null);
     const isEditMode = ref(false);
     const bookToDelete = ref(null);
+    const searchQuery = ref('');
+    const searchTimeout = ref(null);
 
     const fetchBooks = async () => {
       loading.value = true;
       statusMessage.value = '';
       try {
-        const response = await bookService.getBooks(currentPage.value, pageSize.value);
+        const response = await bookService.getBooks(
+          currentPage.value, 
+          pageSize.value, 
+          searchQuery.value
+        );
         books.value = response.items;
-        totalItems.value = response.totalCount;
+        if (!searchQuery.value) {
+          originalBooks.value = [...response.items];
+          totalItems.value = response.totalCount;
+        }
       } catch (error) {
         showStatus('Erro ao carregar livros: ' + error.message, 'error');
       } finally {
         loading.value = false;
       }
+    };
+
+    const handleSearch = () => {
+      clearTimeout(searchTimeout.value);
+      searchTimeout.value = setTimeout(() => {
+        if (searchQuery.value.trim()) {
+          fetchBooks();
+        } else {
+          fetchBooks();
+        }
+      }, 300);
     };
 
     const openCreateForm = () => {
@@ -116,16 +151,10 @@ export default {
 
     const handleBookSaved = async ({ action, book }) => {
       showFormModal.value = false;
-      
       if (action === 'created') {
         emit('book-created', book);
-
-        await fetchBooks();
-      } else {
-
-        await fetchBooks();
       }
-      
+      await fetchBooks();
       showStatus(`Livro ${action === 'created' ? 'adicionado' : 'atualizado'} com sucesso!`, 'success');
     };
 
@@ -157,6 +186,10 @@ export default {
       setTimeout(() => statusMessage.value = '', 5000);
     };
 
+    watch(currentPage, () => {
+      searchQuery.value = '';
+    });
+
     onMounted(fetchBooks);
 
     return {
@@ -172,7 +205,9 @@ export default {
       selectedBook,
       isEditMode,
       bookToDelete,
+      searchQuery,
       fetchBooks,
+      handleSearch,
       openCreateForm,
       openEditForm,
       handleBookSaved,
@@ -195,27 +230,57 @@ export default {
 
 .header-actions {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 1.5rem;
   margin-bottom: 2rem;
-  flex-wrap: wrap;
-  gap: 1rem;
 }
 
-.mock-toggle {
+.search-add-container {
   display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 0.9rem;
+  justify-content: space-between;
 }
+
+.search-box {
+  position: relative;
+  flex-grow: 1;
+  min-width: 250px;
+  max-width: 950px;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 0.75rem 1rem 0.75rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.search-box input:focus {
+  border-color: #0c66a3;
+  box-shadow: 0 0 0 2px rgba(12, 102, 163, 0.2);
+  outline: none;
+}
+
+
 
 .btn-add {
   background-color: #0c66a3;
   color: white;
   border: none;
-  padding: 0.5rem 1rem;
+  padding: 0.75rem 1.5rem;
   border-radius: 4px;
   cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+}
+
+.btn-add:hover {
+  background-color: #094b7a;
 }
 
 .status-message {
@@ -270,9 +335,24 @@ export default {
   margin-bottom: 2rem;
 }
 
-.no-books {
+.no-books, .no-results {
   text-align: center;
   padding: 2rem;
   color: #666;
+  font-size: 1.1rem;
+}
+
+.no-results {
+  font-style: italic;
+}
+
+@media (max-width: 768px) {
+  .book-list {
+    padding: 1rem;
+  }
+  
+  .books-container {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
