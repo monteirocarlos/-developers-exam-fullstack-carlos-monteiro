@@ -29,7 +29,9 @@ Obrigado desde já!
 - LocalStorage *(para versão mockada)*
 
 ---
+## Estrutura do Projeto
 
+```bash
 src/
 ├── components/
 │   ├── books/
@@ -50,5 +52,3 @@ src/
 │       └── BookList.vue
 ├── App.vue
 └── main.js
-
-Feito para o teste da Inspand.
